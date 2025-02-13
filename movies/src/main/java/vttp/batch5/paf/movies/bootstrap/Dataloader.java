@@ -20,8 +20,7 @@ public class Dataloader implements CommandLineRunner{
   @Override
   public void run(String... args) throws Exception {
     if(!mySQLMovieRepository.doesRowExists()){
-      System.out.println(args[0]);
-      movieService.loadData(args[0]);
+      movieService.loadData("movies_post_2010.json");
       System.out.println("Data loaded");
     }
   }
