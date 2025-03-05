@@ -30,23 +30,20 @@ public class Dataloader implements CommandLineRunner{
       Option.builder().longOpt(ARG_FILE).hasArg().required().build()
     );
     CommandLineParser parser = new DefaultParser();
-
+    String filePath =  "data/movies_post_2010.zip";
     try {
       CommandLine command = parser.parse(option, args);
-      String filePath =  "data/movies_post_2010.zip";
       if(command.hasOption(ARG_FILE)){
         filePath = command.getOptionValue(ARG_FILE);
       }
-    
-      // Load data into database
-      if(!mySQLMovieRepository.doesRowExists()){
-        movieService.loadData(filePath);
-      }
     } catch (ParseException e) {
-      System.err.println("ParseException occured, unable to parse arguments");
+
+    }
+    // Load data into database
+    if(!mySQLMovieRepository.doesRowExists()){
+      movieService.loadData(filePath);
     }
 
-    
     // if(!mySQLMovieRepository.doesRowExists()){
     //   movieService.loadData();
     //   System.out.println("Data loaded");
