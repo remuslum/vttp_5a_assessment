@@ -1,7 +1,6 @@
 package vttp.batch5.paf.movies.repositories;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,6 +25,7 @@ import static vttp.batch5.paf.movies.util.JSON.JSONFields.F_JSON_VOTE_AVERAGE;
 import static vttp.batch5.paf.movies.util.JSON.JSONFields.F_JSON_VOTE_COUNT;
 import static vttp.batch5.paf.movies.util.SQL.MySQLQueries.FIND_PROFIT;
 import static vttp.batch5.paf.movies.util.SQL.MySQLQueries.INSERT_INTO_TABLE_IMDB;
+import static vttp.batch5.paf.movies.util.SQL.MySQLQueries.MYSQL_COUNT;
 import static vttp.batch5.paf.movies.util.SQL.MySQLQueries.SELECT_ALL_FIELDS;
 
 @Repository
@@ -36,33 +36,38 @@ public class MySQLMovieRepository {
 
   // TODO: Task 2.3
   // You can add any number of parameters and return any type from the method
-  public void batchInsertMovies(JsonArray array) {
+  public void batchInsertMovies(List<JsonObject> itemsToInsert){
     List<Object[]> params = new ArrayList<>();
-    Map<String, Integer> imdbIds = new HashMap<>();
-    System.out.println(array.size());
-    for(int i = 0; i < array.size(); i++){
-      JsonObject object = array.getJsonObject(i);
-      String id = object.getString(F_JSON_IMDB_ID);
-      if(!imdbIds.containsKey(id)){
-        imdbIds.put(id, i);
-        params.add(getParams(object));
-        if(params.size() == 25){
-          jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB, params);
-          params = new ArrayList<>();
-        }
-      }
-
-      if(i == array.size() - 1){
-        jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB, params);
-      }
-    }
+    itemsToInsert.forEach((object) -> {
+      params.add(getParams(object));
+    });
+    System.out.println("Inserting into MySQL");
+    jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB,params);
   }
 
+  // public void batchInsertMovies(JsonArray array) {
+  //   List<Object[]> params = new ArrayList<>();
+  //   Map<String, Integer> imdbIds = new HashMap<>();
+  //   System.out.println(array.size());
+  //   for(int i = 0; i < array.size(); i++){
+  //     JsonObject object = array.getJsonObject(i);
+  //     String id = object.getString(F_JSON_IMDB_ID);
+  //     if(!imdbIds.containsKey(id)){
+  //       imdbIds.put(id, i);
+  //       params.add(getParams(object));
+  //       if(params.size() == 25){
+  //         jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB, params);
+  //         params = new ArrayList<>();
+  //       }
+  //     }
+
+  //     if(i == array.size() - 1){
+  //       jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB, params);
+  //     }
+  //   }
+  // }
+
   private Object[] getParams(JsonObject object){
-    // List<Object[]> params = new ArrayList<>();
-    // List<String> imdbIds = new ArrayList<>();
-    // int index = 0;
-    // while(params.size() != 25){
     Object[] objectParams = new Object[]{JSONDefaultValues.getStringInput(F_JSON_IMDB_ID, object),JSONDefaultValues.getIntegerInput(F_JSON_VOTE_AVERAGE, object)
     ,JSONDefaultValues.getIntegerInput(F_JSON_VOTE_COUNT, object),JSONDefaultValues.getStringInput(F_JSON_RELEASE_DATE, object),JSONDefaultValues.getIntegerInput(F_JSON_REVENUE, object),
     JSONDefaultValues.getIntegerInput(F_JSON_BUDGET, object), JSONDefaultValues.getIntegerInput(F_JSON_RUNTIME, object)};
@@ -73,7 +78,12 @@ public class MySQLMovieRepository {
 
   public boolean doesRowExists(){
     SqlRowSet rowSet = jdbcTemplate.queryForRowSet(SELECT_ALL_FIELDS);
-    return rowSet.next();
+    while(rowSet.next()){
+      System.out.println(rowSet.getInt(MYSQL_COUNT));
+      return rowSet.getInt(MYSQL_COUNT) > 0;
+    }
+    return false;
+    
   }
   
   // TODO: Task 3

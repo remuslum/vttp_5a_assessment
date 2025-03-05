@@ -4,10 +4,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.Map.Entry;
+
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,9 +18,7 @@ import org.springframework.stereotype.Repository;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.model.InsertOneModel;
 
-import jakarta.json.JsonArray;
 import jakarta.json.JsonObject;
 import vttp.batch5.paf.movies.models.Director;
 import vttp.batch5.paf.movies.util.JSON.JSONDefaultValues;
@@ -62,40 +61,54 @@ public class MongoMovieRepository {
 //  {insertOne : {<field> : <document>}} 
 // ])
  //
-    public void batchInsertMovies(JsonArray array) {
+    public void batchInsertMovies(List<JsonObject> itemsToInsert) {
         List<String> imdbIds = new ArrayList<>();
-        Map<String, Integer> imdbIdsMap = new HashMap<>();
-        List<InsertOneModel<Document>> params = new ArrayList<>(); 
-        System.out.println(array.size());
+        itemsToInsert.forEach((item) -> {
+            imdbIds.add(item.getString(F_JSON_IMDB_ID));
+        });
         try {
-            MongoCollection<Document> collection = mongoTemplate.getCollection(C_IMDB);
-            for(int i = 0; i < array.size(); i++){
-                JsonObject object = array.getJsonObject(i);
-                String id = object.getString(F_JSON_IMDB_ID);
-                if (!imdbIdsMap.containsKey(id)){
-                    imdbIdsMap.put(id, i);
-                    imdbIds.add(id);
-                    params.add(new InsertOneModel<>(getParams(object)));
-                    if(params.size() == 25){
-
-                        collection.bulkWrite(params);
-                        params = new ArrayList<>();
-                    }
-                }
-                if(i == array.size() - 1){
-                    collection.bulkWrite(params);
-                }
-            }
-        } catch (MongoException me){
-            logError(imdbIds, me);
+            System.out.println("Inserting into Mongo");
+            List<Document> documentsToInsert = new LinkedList<>();
+            itemsToInsert.forEach((object) -> {
+            documentsToInsert.add(getParams(object));
+            });
+            mongoTemplate.insert(documentsToInsert,C_IMDB);
+        } catch (MongoException e) {
+            logError(imdbIds, e);
         }
+        
+        // List<String> imdbIds = new ArrayList<>();
+        // Map<String, Integer> imdbIdsMap = new HashMap<>();
+        // List<InsertOneModel<Document>> params = new ArrayList<>(); 
+        // System.out.println(array.size());
+        // try {
+        //     MongoCollection<Document> collection = mongoTemplate.getCollection(C_IMDB);
+        //     for(int i = 0; i < array.size(); i++){
+        //         JsonObject object = array.getJsonObject(i);
+        //         String id = object.getString(F_JSON_IMDB_ID);
+        //         if (!imdbIdsMap.containsKey(id)){
+        //             imdbIdsMap.put(id, i);
+        //             imdbIds.add(id);
+        //             params.add(new InsertOneModel<>(getParams(object)));
+        //             if(params.size() == 25){
+
+        //                 collection.bulkWrite(params);
+        //                 params = new ArrayList<>();
+        //             }
+        //         }
+        //         if(i == array.size() - 1){
+        //             collection.bulkWrite(params);
+        //         }
+        //     }
+        // } catch (MongoException me){
+        //     logError(imdbIds, me);
+        // }
 
     }
 
     private Document getParams(JsonObject object){
         Document documentToInsert = new Document();
-        documentToInsert.append(F_ID, UUID.randomUUID().toString().substring(0, 8))
-        .append(F_JSON_IMDB_ID,JSONDefaultValues.getStringInput(F_JSON_IMDB_ID, object))
+        documentToInsert.append(F_JSON_IMDB_ID,JSONDefaultValues.getStringInput(F_JSON_IMDB_ID, object))
         .append(F_TITLE, JSONDefaultValues.getStringInput(F_JSON_TITLE, object))
         .append(F_DIRECTORS, JSONDefaultValues.getStringInput(F_JSON_DIRECTOR, object))
         .append(F_OVERVIEW, JSONDefaultValues.getStringInput(F_JSON_OVERVIEW, object))

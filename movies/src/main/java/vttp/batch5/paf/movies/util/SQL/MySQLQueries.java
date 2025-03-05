@@ -2,6 +2,7 @@ package vttp.batch5.paf.movies.util.SQL;
 
 public class MySQLQueries {
     public static final String MYSQL_TABLE="imdb";
+    public static final String MYSQL_COUNT="count";
 
     public static final String INSERT_INTO_TABLE_IMDB=
     """
@@ -11,7 +12,7 @@ public class MySQLQueries {
 
     public static final String SELECT_ALL_FIELDS=
     """
-        SELECT * FROM imdb;        
+        SELECT COUNT(*) AS count FROM imdb;        
     """;
 
     public static final String FIND_PROFIT=

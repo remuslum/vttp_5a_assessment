@@ -2,10 +2,12 @@ package vttp.batch5.paf.movies.components;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.time.LocalDate;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.springframework.stereotype.Component;
 
@@ -18,14 +20,13 @@ import static vttp.batch5.paf.movies.util.JSON.JSONFields.F_JSON_RELEASE_DATE;
 @Component
 public class JSONComponent {
 
-    public JsonArray readJsonFile(String filePath){
+    public JsonArray readJsonArray(String filePath){
         String line = "";
         JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
-        try {
-            // FileInputStream inputStream = new FileInputStream(filePath);
-            BufferedReader br = new BufferedReader(new FileReader(filePath));
-            // JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
 
+        try {
+            System.out.println("Am I reading file");
+            BufferedReader br = readZipFile(filePath);
             while((line = br.readLine()) != null){
                 JsonObject object = Json.createReader(new StringReader(line)).readObject();
                 LocalDate releasedDate = LocalDate.parse(object.getString(F_JSON_RELEASE_DATE));
@@ -33,15 +34,54 @@ public class JSONComponent {
                     jsonArrayBuilder.add(Json.createReader(new StringReader(line)).readObject());
                 }
             }
-            
-            br.close();
-        } catch (FileNotFoundException e){
-            System.out.println("File not Found Exception occured");
-        } catch (IOException e){
-            System.out.println("IOException Occured");
+            return jsonArrayBuilder.build();
+        } catch (IOException ie) {
+            System.out.println("IO Exception occured");
         }
         return jsonArrayBuilder.build();
     }
+
+    public BufferedReader readZipFile(String filePath){
+        try {
+            // Read zip file
+            ZipFile zipFile = new ZipFile((filePath));
+            ZipEntry entry = zipFile.entries().nextElement();
+            BufferedReader br = new BufferedReader(new InputStreamReader(zipFile.getInputStream(entry)));
+
+            return br;
+        } catch (FileNotFoundException fe){
+            System.out.println("File Not Found Exception occured");
+        } catch (IOException ie){
+            System.out.println("IO Exception occured");
+        } 
+        return null;
+    }
+
+    // public JsonArray readJsonFile(String filePath){
+    //     String line = "";
+    //     JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
+    //     try {
+    //         // FileInputStream inputStream = new FileInputStream(filePath);
+    //         BufferedReader br = new BufferedReader(new FileReader(filePath));
+    //         // JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
+
+    //         while((line = br.readLine()) != null){
+    //             JsonObject object = Json.createReader(new StringReader(line)).readObject();
+    //             LocalDate releasedDate = LocalDate.parse(object.getString(F_JSON_RELEASE_DATE));
+    //             if(releasedDate.getYear() >= 2018){
+    //                 jsonArrayBuilder.add(Json.createReader(new StringReader(line)).readObject());
+    //             }
+    //         }
+            
+    //         br.close();
+            
+    //     } catch (FileNotFoundException e){
+    //         System.out.println("File not Found Exception occured");
+    //     } catch (IOException e){
+    //         System.out.println("IOException Occured");
+    //     }
+    //     return jsonArrayBuilder.build();
+    // }
 
     // {"title":"Sin City: A Dame to Kill For","vote_average":6,"vote_count":3812,"status":"Released",
     // "release_date":"2014-08-20","revenue":39400000,"runtime":102,"budget":65000000,"imdb_id":"tt0458481",
