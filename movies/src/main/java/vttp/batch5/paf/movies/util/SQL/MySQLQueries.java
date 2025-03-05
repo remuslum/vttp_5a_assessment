@@ -17,7 +17,7 @@ public class MySQLQueries {
 
     public static final String FIND_PROFIT=
     """
-        SELECT SUM(revenue) AS revenue_sum, SUM(budget) AS budget_sum
+        SELECT revenue AS revenue_sum, budget AS budget_sum
         FROM imdb WHERE imdb_id = ?;        
     """;
 }

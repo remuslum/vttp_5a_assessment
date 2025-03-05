@@ -2,19 +2,19 @@ package vttp.batch5.paf.movies.repositories;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
+import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Repository;
 
-import jakarta.json.Json;
-import jakarta.json.JsonArray;
-import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
-import jakarta.json.JsonObjectBuilder;
 import vttp.batch5.paf.movies.models.Director;
+import static vttp.batch5.paf.movies.util.JSON.JSONArrayFields.TASK_3_DIRECTOR_NAME;
+import static vttp.batch5.paf.movies.util.JSON.JSONArrayFields.TASK_3_MOVIE_COUNT;
+import static vttp.batch5.paf.movies.util.JSON.JSONArrayFields.TASK_3_TOTAL_BUDGET;
+import static vttp.batch5.paf.movies.util.JSON.JSONArrayFields.TASK_3_TOTAL_REVENUE;
 import vttp.batch5.paf.movies.util.JSON.JSONDefaultValues;
 import static vttp.batch5.paf.movies.util.JSON.JSONFields.F_JSON_BUDGET;
 import static vttp.batch5.paf.movies.util.JSON.JSONFields.F_JSON_IMDB_ID;
@@ -45,28 +45,6 @@ public class MySQLMovieRepository {
     jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB,params);
   }
 
-  // public void batchInsertMovies(JsonArray array) {
-  //   List<Object[]> params = new ArrayList<>();
-  //   Map<String, Integer> imdbIds = new HashMap<>();
-  //   System.out.println(array.size());
-  //   for(int i = 0; i < array.size(); i++){
-  //     JsonObject object = array.getJsonObject(i);
-  //     String id = object.getString(F_JSON_IMDB_ID);
-  //     if(!imdbIds.containsKey(id)){
-  //       imdbIds.put(id, i);
-  //       params.add(getParams(object));
-  //       if(params.size() == 25){
-  //         jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB, params);
-  //         params = new ArrayList<>();
-  //       }
-  //     }
-
-  //     if(i == array.size() - 1){
-  //       jdbcTemplate.batchUpdate(INSERT_INTO_TABLE_IMDB, params);
-  //     }
-  //   }
-  // }
-
   private Object[] getParams(JsonObject object){
     Object[] objectParams = new Object[]{JSONDefaultValues.getStringInput(F_JSON_IMDB_ID, object),JSONDefaultValues.getIntegerInput(F_JSON_VOTE_AVERAGE, object)
     ,JSONDefaultValues.getIntegerInput(F_JSON_VOTE_COUNT, object),JSONDefaultValues.getStringInput(F_JSON_RELEASE_DATE, object),JSONDefaultValues.getIntegerInput(F_JSON_REVENUE, object),
@@ -87,31 +65,37 @@ public class MySQLMovieRepository {
   }
   
   // TODO: Task 3
-  public JsonArray getDirectorsInfo(int count, List<Director> directors, Map<String, List<String>> directorsList){
-        JsonArrayBuilder arrayBuilder = Json.createArrayBuilder();
-        for(int i = 1; i < count + 1; i++){
-          arrayBuilder.add(getDirector(directorsList, directors.get(i)));
-        }
-        return arrayBuilder.build();
+  public List<Document> getDirectorsInfo(int count, List<Director> directors){
+    List<Document> directorsDocument = new ArrayList<>();
+    for(int i = 0; i < count; i++){
+      directorsDocument.add(buildDirectorObject(directors.get(i)));
+    }
+    return directorsDocument;
   }
 
-    public JsonObject getDirector(Map<String, List<String>> directorsList, Director director){
-        List<String> movieIds = directorsList.get(director.getName());
-        JsonObjectBuilder object = Json.createObjectBuilder();
-        double revenue = 0.00;
-        double budget = 0.00;
-        for(String movieId : movieIds){
-          SqlRowSet rowSet = jdbcTemplate.queryForRowSet(FIND_PROFIT, movieId);
-          while(rowSet.next()){
-            revenue += rowSet.getDouble("revenue_sum");
-            budget += rowSet.getDouble("budget_sum");
-          }
-        }
+  private Document buildDirectorObject(Director director){
+    setRevenueAndBudget(director);
+    Document documentToAdd = new Document();
+    
+    documentToAdd.append(TASK_3_DIRECTOR_NAME,director.getName()).append(TASK_3_MOVIE_COUNT,director.getMovies())
+    .append(TASK_3_TOTAL_REVENUE,director.getRevenue()).append(TASK_3_TOTAL_BUDGET,director.getBudget());
 
-        object.add("director_name",director.getName()).add("movies_count",director.getMovies())
-        .add("total_revenue",revenue).add("total_budget",budget);
+    return documentToAdd;
+  }
 
-        return object.build();
+  private void setRevenueAndBudget(Director director){
+    List<String> movieIds = director.getMovieIds();
+    double revenue = 0.00;
+    double budget = 0.00;
+    for(String id:movieIds){
+      SqlRowSet rowSet = jdbcTemplate.queryForRowSet(FIND_PROFIT, id);
+      while(rowSet.next()){
+        revenue += rowSet.getDouble("revenue_sum");
+        budget += rowSet.getDouble("budget_sum");
+      }
     }
+    director.setRevenue(revenue);
+    director.setBudget(budget); 
+  }
 
 }

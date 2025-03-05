@@ -33,17 +33,13 @@ public class Dataloader implements CommandLineRunner{
 
     try {
       CommandLine command = parser.parse(option, args);
-      String filePath = "";
+      String filePath =  "data/movies_post_2010.zip";
       if(command.hasOption(ARG_FILE)){
         filePath = command.getOptionValue(ARG_FILE);
       }
-      else {
-        filePath = "data/movies_post_2010.zip";
-      }
-      System.out.println(mySQLMovieRepository.doesRowExists());
+    
       // Load data into database
       if(!mySQLMovieRepository.doesRowExists()){
-        System.out.println("Loading Data");
         movieService.loadData(filePath);
       }
     } catch (ParseException e) {

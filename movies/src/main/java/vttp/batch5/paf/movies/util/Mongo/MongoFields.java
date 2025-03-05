@@ -17,7 +17,6 @@ public class MongoFields {
     public static final String F_IMDB_RATING="imdb_rating";
     public static final String F_IMDB_VOTES="imdb_votes";
     public static final String F_MOVIES="movies";
-
-    
+    public static final String F_MOVIES_COUNT="movieCount";
 
 }

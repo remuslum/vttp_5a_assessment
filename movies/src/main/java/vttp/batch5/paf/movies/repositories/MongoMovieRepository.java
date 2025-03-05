@@ -11,9 +11,15 @@ import java.util.Map.Entry;
 
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Direction;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.AddFieldsOperation;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.aggregation.SortOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
 
 import com.mongodb.MongoException;
@@ -38,10 +44,10 @@ import static vttp.batch5.paf.movies.util.Mongo.MongoFields.C_IMDB;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_DIRECTORS;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_GENRES;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_ID;
-import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_IMDB_ID_FIELD;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_IMDB_RATING;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_IMDB_VOTES;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_MOVIES;
+import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_MOVIES_COUNT;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_OVERVIEW;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_TAGLINE;
 import static vttp.batch5.paf.movies.util.Mongo.MongoFields.F_TITLE;
@@ -52,15 +58,15 @@ public class MongoMovieRepository {
     @Autowired
     private MongoTemplate mongoTemplate;
 
- // TODO: Task 2.3
- // You can add any number of parameters and return any type from the method
- // You can throw any checked exceptions from the method
- // Write the native Mongo query you implement in the method in the comments
- //
- // db.imdb.bulkWrite([
+// TODO: Task 2.3
+// You can add any number of parameters and return any type from the method
+// You can throw any checked exceptions from the method
+// Write the native Mongo query you implement in the method in the comments
+//
+// db.imdb.bulkWrite([
 //  {insertOne : {<field> : <document>}} 
 // ])
- //
+//
     public void batchInsertMovies(List<JsonObject> itemsToInsert) {
         List<String> imdbIds = new ArrayList<>();
         itemsToInsert.forEach((item) -> {
@@ -76,39 +82,12 @@ public class MongoMovieRepository {
         } catch (MongoException e) {
             logError(imdbIds, e);
         }
-        
-        // List<String> imdbIds = new ArrayList<>();
-        // Map<String, Integer> imdbIdsMap = new HashMap<>();
-        // List<InsertOneModel<Document>> params = new ArrayList<>(); 
-        // System.out.println(array.size());
-        // try {
-        //     MongoCollection<Document> collection = mongoTemplate.getCollection(C_IMDB);
-        //     for(int i = 0; i < array.size(); i++){
-        //         JsonObject object = array.getJsonObject(i);
-        //         String id = object.getString(F_JSON_IMDB_ID);
-        //         if (!imdbIdsMap.containsKey(id)){
-        //             imdbIdsMap.put(id, i);
-        //             imdbIds.add(id);
-        //             params.add(new InsertOneModel<>(getParams(object)));
-        //             if(params.size() == 25){
-
-        //                 collection.bulkWrite(params);
-        //                 params = new ArrayList<>();
-        //             }
-        //         }
-        //         if(i == array.size() - 1){
-        //             collection.bulkWrite(params);
-        //         }
-        //     }
-        // } catch (MongoException me){
-        //     logError(imdbIds, me);
-        // }
 
     }
 
     private Document getParams(JsonObject object){
         Document documentToInsert = new Document();
-        documentToInsert.append(F_JSON_IMDB_ID,JSONDefaultValues.getStringInput(F_JSON_IMDB_ID, object))
+        documentToInsert.append(F_ID,JSONDefaultValues.getStringInput(F_JSON_IMDB_ID, object))
         .append(F_TITLE, JSONDefaultValues.getStringInput(F_JSON_TITLE, object))
         .append(F_DIRECTORS, JSONDefaultValues.getStringInput(F_JSON_DIRECTOR, object))
         .append(F_OVERVIEW, JSONDefaultValues.getStringInput(F_JSON_OVERVIEW, object))
@@ -134,44 +113,71 @@ public class MongoMovieRepository {
         errorCollection.insertOne(errorDocument);
     }
 
- // TODO: Task 3
- // Write the native Mongo query you implement in the method in the comments
- //db.imdb.aggregate([
-    //     {
-    //         $group : {
-    //             _id:'$directors',
-    //             movies : {
-    //                 $push : {
-    //                     movies : '$imdb_id'
-    //                 }
-    //             }
-    //         }
-    //     }
-    // ]);
- //    native MongoDB query here
- //
-    public Map<String, List<String>> getTopDirectors(){
-        GroupOperation groupByDirector = Aggregation.group(F_DIRECTORS).push(F_IMDB_ID_FIELD).as(F_MOVIES);
-        Aggregation aggregation = Aggregation.newAggregation(groupByDirector);
-        List<Document> results = mongoTemplate.aggregate(aggregation, C_IMDB,Document.class).getMappedResults();
-        Map<String, List<String>> directorsMovieList = new HashMap<>();
+// TODO: Task 3
+// Write the native Mongo query you implement in the method in the comments
+//  db.getCollection("imdb").aggregate([
+//     {
+//         $match : {
+//             directors : {
+//                 $ne : ""
+//             }
+//         }
+//     },
+//     {
+//         $group : {
+//             _id : "$directors",
+//             movies : {
+//                 $push : "$_id"
+//             }
+//             }
+//         }, {
+//             $addFields : {
+//                 movieCount : {
+//                     $size : "$movies"
+//                 }
+//             }
+//         }, {
+//             $sort : {
+//                 movieCount : -1
+//             }
+//     }
+// ])
+//    native MongoDB query here
+//
 
-        results.forEach(r -> {
-            List<String> movies = r.getList("movies", String.class);
-            directorsMovieList.put(r.getString(F_ID), movies);
-        });
-        return directorsMovieList;
+    public List<Director> getDirectors(){
+        List<Director> directors = new ArrayList<>();
+        Map<String, List<String>> directorsMap = getDirectorsAndMovieIds();
+
+        for(Entry<String, List<String>> entry : directorsMap.entrySet()){
+            directors.add(new Director(entry.getKey(),entry.getValue()));
+        }
+        Collections.sort(directors, Collections.reverseOrder());
+        return directors;
     }
-
-    public List<Director> sortDirectors(Map<String, List<String>> directorsList){
-       List<Director> temp = new ArrayList<>();
-       for(Entry<String, List<String>> entry : directorsList.entrySet()){
-            temp.add(new Director(entry.getKey(), entry.getValue().size()));
-       }
-       Collections.sort(temp, Collections.reverseOrder());
-       return temp;
-    }
-
     
+    private List<Document> getDirectorsInfo(){
+        Criteria notEmpty = Criteria.where(F_DIRECTORS).ne("");
+        MatchOperation removeEmptyValues = Aggregation.match(notEmpty);
+        GroupOperation groupByDirectors = Aggregation.group(F_DIRECTORS).push(F_ID).as(F_MOVIES);
+        AddFieldsOperation addMoviesCount = AddFieldsOperation.addField(F_MOVIES_COUNT).withValueOfExpression("{$size : '$movies'}").build();
+        SortOperation sortByMovieCount = Aggregation.sort(Sort.by(Direction.DESC,F_MOVIES_COUNT));
+
+        Aggregation aggregation = Aggregation.newAggregation(removeEmptyValues,groupByDirectors,addMoviesCount,sortByMovieCount);
+        return mongoTemplate.aggregate(aggregation, C_IMDB,Document.class).getMappedResults();
+    }
+
+    private Map<String, List<String>> getDirectorsAndMovieIds(){
+        Map<String, List<String>> directorsInfo = new HashMap<>();
+        List<Document> directors = getDirectorsInfo();
+
+        directors.forEach(d -> {
+            List<String> movieIds = d.getList(F_MOVIES, String.class);
+            directorsInfo.put(d.getString(F_ID),movieIds);
+        });
+
+        return directorsInfo;
+    }
+        
 
 }
